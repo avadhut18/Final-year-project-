@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+python-multipart
+pydantic
+requests
+httpx
+aiofiles
+pdfplumber
+python-docx
+beautifulsoup4
+lxml
+tiktoken
+python-dotenv
+PyJWT
+PyMuPDF
