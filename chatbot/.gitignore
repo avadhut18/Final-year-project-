@@ -1,0 +1,21 @@
+# Secrets and local configuration
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+
+# Runtime data
+uploads/
+data/
+parsed/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
