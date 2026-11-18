@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CSMU Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background-color: #f0f6ff; }
+    .dashboard-box { max-width: 600px; margin: 100px auto 50px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,.1); }
+    .file-entry { display: flex; justify-content: space-between; align-items: center; background: #f0f4ff; padding: 10px 14px; margin-top: 10px; border-radius: 8px; }
+    .file-name { word-break: break-word; flex-grow: 1; font-size: 15px; }
+    .file-name a { color: #1e40af; text-decoration: none; }
+    .file-name a:hover { text-decoration: underline; }
+    .delete-btn { background-color: #e74c3c; border: none; color: white; padding: 6px 10px; border-radius: 6px; cursor: pointer; margin-left: 10px; font-weight: bold; }
+    .logout-btn { position: fixed; top: 20px; right: 30px; width: auto; padding: 8px 16px; background-color: #e11d48; color: white; border: none; border-radius: 6px; cursor: pointer; z-index: 999; }
+    button { background-color: #1a4dab; color: white; border: none; padding: 10px 20px; margin-top: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    input[type="text"], input[type="file"] { width: 100%; padding: 10px; margin: 10px 0; border-radius: 6px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <button class="logout-btn" onclick="logout()">Logout</button>
+  <div class="dashboard-box">
+    <h2>Upload Content</h2>
+    <form id="upload-form">
+      <input type="file" id="file" />
+      <input type="text" id="url" placeholder="Paste link (optional)" />
+      <button type="submit">Upload</button>
+    </form>
+
+    <h3 style="margin-top: 2rem;">Delete File</h3>
+    <form id="delete-form">
+      <input type="text" id="filename" placeholder="Exact filename to delete" required />
+      <button type="submit">Delete</button>
+    </form>
+    <p id="status" style="margin-top: 1rem;"></p>
+    <h3>Uploaded Files &amp; Links</h3>
+    <div id="file-list"></div>
+  </div>
+
+  <script>
+    const backendURL = "http://127.0.0.1:8001";
+    const token = localStorage.getItem("token");
+    if (!token) window.location.href = "login.html";
+
+    function logout() {
+      localStorage.removeItem("token");
+      window.location.href = "index.html";
+    }
+
+    function getIcon(file) {
+      if (file.endsWith(".pdf")) return "📄";
+      if (file.endsWith(".txt") && file.includes("scraped")) return "🔗";
+      return "📁";
+    }
+
+    async function loadFiles() {
+      const res = await fetch(`${backendURL}/files?token=${encodeURIComponent(token)}`);
+      const data = await res.json();
+      const container = document.getElementById("file-list");
+      container.innerHTML = "";
+
+      if (data.files && data.files.length > 0) {
+        data.files.forEach(file => {
+          const div = document.createElement("div");
+          div.className = "file-entry";
+          const name = document.createElement("div");
+          name.className = "file-name";
+          const fileLink = document.createElement("a");
+          fileLink.href = `${backendURL}/data/${encodeURIComponent(file)}`;
+          fileLink.target = "_blank";
+          fileLink.rel = "noopener noreferrer";
+          fileLink.textContent = `${getIcon(file)} ${file}`;
+          name.appendChild(fileLink);
+          const delBtn = document.createElement("button");
+          delBtn.textContent = "Delete";
+          delBtn.className = "delete-btn";
+          delBtn.onclick = () => deleteFile(file);
+          div.appendChild(name);
+          div.appendChild(delBtn);
+          container.appendChild(div);
+        });
+      } else {
+        container.textContent = "No files found.";
+      }
+    }
+
+    async function deleteFile(file) {
+      const formData = new URLSearchParams();
+      formData.append("token", token);
+      formData.append("filename", file);
+      const res = await fetch(`${backendURL}/delete`, { method: "POST", body: formData });
+      const data = await res.json().catch(() => ({}));
+      document.getElementById("status").textContent =
+        res.ok ? "Deleted successfully" : (data.detail || "Delete failed");
+      loadFiles();
+    }
+
+    document.getElementById("upload-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const file = document.getElementById("file").files[0];
+      const url = document.getElementById("url").value;
+      const formData = new FormData();
+      formData.append("token", token);
+      if (file) formData.append("file", file);
+      if (url) formData.append("url", url);
+
+      const res = await fetch(`${backendURL}/upload`, { method: "POST", body: formData });
+      const data = await res.json().catch(() => ({}));
+      document.getElementById("status").textContent =
+        res.ok ? `Uploaded: ${data.filename || "content"}` : (data.detail || "Upload failed");
+      document.getElementById("file").value = "";
+      document.getElementById("url").value = "";
+      loadFiles();
+    });
+
+    document.getElementById("delete-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const filename = document.getElementById("filename").value;
+      await deleteFile(filename);
+      document.getElementById("filename").value = "";
+    });
+
+    loadFiles();
+  </script>
+</body>
+</html>
