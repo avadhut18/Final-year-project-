@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CSMU Chatbot</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    @media (max-width: 480px) {
+      body { padding: 20px; }
+      .chat-container { margin: 50px auto; padding: 20px; }
+    }
+  </style>
+</head>
+<body style="background-color: #eef4ff; font-family: Arial, sans-serif;">
+  <div id="auth-bar" style="position: absolute; top: 20px; right: 30px;">
+    <button id="auth-button" style="padding: 8px 16px; background-color: #1d4ed8; color: white; border: none; border-radius: 5px; cursor: pointer;">Login</button>
+  </div>
+
+  <div class="chat-container" style="max-width: 400px; margin: 100px auto; padding: 30px; background-color: white; border-radius: 20px; box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);">
+    <h2 style="text-align: center; color: #1d4ed8;">CSMU Chatbot</h2>
+    <div id="chat-box" style="height: 300px; overflow-y: auto; border: 1px solid #ccc; border-radius: 10px; padding: 10px; margin-bottom: 15px; background-color: #f9f9f9;"></div>
+    <input id="user-input" type="text" placeholder="Ask me anything..." style="width: 100%; padding: 10px; border-radius: 10px; border: 1px solid #ccc; margin-bottom: 10px;" />
+    <button id="send-button" style="width: 100%; background-color: #1d4ed8; color: white; padding: 10px; border: none; border-radius: 10px; cursor: pointer;">Send</button>
+  </div>
+
+  <script>
+    const backendURL = "http://127.0.0.1:8001";
+    const authButton = document.getElementById("auth-button");
+    const chatBox = document.getElementById("chat-box");
+    const sendBtn = document.getElementById("send-button");
+    const userInput = document.getElementById("user-input");
+
+    function updateAuthUI() {
+      authButton.textContent = localStorage.getItem("token") ? "Logout" : "Login";
+    }
+
+    function addMessage(sender, text) {
+      const msgElement = document.createElement("p");
+      const label = document.createElement("strong");
+      label.textContent = sender + ": ";
+      msgElement.appendChild(label);
+      msgElement.appendChild(document.createTextNode(text));
+      chatBox.appendChild(msgElement);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function showTyping() {
+      const typing = document.createElement("p");
+      typing.id = "typing";
+      typing.innerHTML = "<em>Bot is typing...</em>";
+      chatBox.appendChild(typing);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function removeTyping() {
+      const typing = document.getElementById("typing");
+      if (typing) typing.remove();
+    }
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      addMessage("You", message);
+      userInput.value = "";
+      showTyping();
+
+      try {
+        const response = await fetch(`${backendURL}/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message })
+        });
+        const data = await response.json();
+        removeTyping();
+        addMessage("Bot", data.response || "Sorry, no response received.");
+      } catch (err) {
+        console.error("Chat error:", err);
+        removeTyping();
+        addMessage("Bot", "Something went wrong. Please try again.");
+      }
+    }
+
+    authButton.addEventListener("click", () => {
+      if (localStorage.getItem("token")) {
+        localStorage.removeItem("token");
+        alert("Logged out!");
+        location.reload();
+      } else {
+        window.location.href = "login.html";
+      }
+    });
+
+    sendBtn.addEventListener("click", sendMessage);
+    userInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+    updateAuthUI();
+  </script>
+</body>
+</html>
